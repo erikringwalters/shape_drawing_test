@@ -1,6 +1,6 @@
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_simple_subsecond_system::*;
-use cursor::CursorPlugin;
+use cursor::{Cursor, CursorPlugin};
 
 mod cursor;
 
@@ -43,7 +43,7 @@ fn main() {
         .add_plugins(CursorPlugin)
         .init_state::<DrawMode>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (change_draw_mode, handle_reload))
+        .add_systems(Update, (change_draw_mode, handle_drawing, handle_reload))
         .run();
 }
 
@@ -92,6 +92,7 @@ fn handle_reload(
     }
 }
 
+#[hot]
 fn change_draw_mode(input: Res<ButtonInput<KeyCode>>, mut state: ResMut<NextState<DrawMode>>) {
     if input.just_pressed(KeyCode::Escape) {
         state.set(DrawMode::None);
@@ -105,5 +106,30 @@ fn change_draw_mode(input: Res<ButtonInput<KeyCode>>, mut state: ResMut<NextStat
         state.set(DrawMode::Circle);
     } else if input.just_pressed(KeyCode::KeyA) {
         state.set(DrawMode::Arc);
+    }
+}
+
+#[hot]
+fn handle_drawing(
+    mut commands: Commands,
+    input: Res<ButtonInput<MouseButton>>,
+    state: Res<State<DrawMode>>,
+    cursor: Res<Cursor>,
+) {
+    // println!("State: {:?}", state);
+    match state.get() {
+        DrawMode::None => {
+            return;
+        }
+        DrawMode::Dot => {
+            if input.just_pressed(MouseButton::Left) {
+                commands.spawn(Dot {
+                    position: cursor.position,
+                });
+            }
+        }
+        _ => {
+            return;
+        }
     }
 }
