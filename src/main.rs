@@ -15,11 +15,6 @@ pub enum DrawMode {
     Arc,
 }
 
-#[derive(Resource, Default, Debug)]
-pub struct Current {
-    pub draw_mode: DrawMode,
-}
-
 pub const DEFAULT_RESOLUTION: u32 = 64;
 
 #[derive(Component)]
@@ -46,9 +41,9 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(SimpleSubsecondPlugin::default())
         .add_plugins(CursorPlugin)
-        .insert_resource(Current::default())
+        .init_state::<DrawMode>()
         .add_systems(Startup, setup)
-        .add_systems(Update, handle_reload)
+        .add_systems(Update, (change_draw_mode, handle_reload))
         .run();
 }
 
@@ -57,9 +52,7 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
-    mut current: ResMut<Current>,
 ) {
-    current.draw_mode = DrawMode::None;
     commands.spawn((
         Camera3d::default(),
         Projection::from(OrthographicProjection {
@@ -76,7 +69,7 @@ fn setup(
 
     commands.spawn((
         Mesh3d(meshes.add(Cone::new(0.5, 1.))),
-        MeshMaterial3d(materials.add(Color::srgb(0.1, 0.8, 0.1))),
+        MeshMaterial3d(materials.add(Color::srgb(0.5, 0.8, 0.1))),
         Reloadable,
     ));
 }
@@ -87,7 +80,6 @@ fn handle_reload(
     mut commands: Commands,
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<StandardMaterial>>,
-    current: ResMut<Current>,
     query: Query<Entity, With<Reloadable>>,
 ) {
     if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyR) {
@@ -95,7 +87,23 @@ fn handle_reload(
         for entity in query.iter() {
             commands.entity(entity).despawn();
         }
-        setup(commands, meshes, materials, current);
+        setup(commands, meshes, materials);
         println!("Reloaded.")
+    }
+}
+
+fn change_draw_mode(input: Res<ButtonInput<KeyCode>>, mut state: ResMut<NextState<DrawMode>>) {
+    if input.just_pressed(KeyCode::Escape) {
+        state.set(DrawMode::None);
+    } else if input.just_pressed(KeyCode::KeyD) {
+        state.set(DrawMode::Dot);
+    } else if input.just_pressed(KeyCode::KeyS) {
+        state.set(DrawMode::Line);
+    } else if input.just_pressed(KeyCode::KeyR) {
+        state.set(DrawMode::Rectangle);
+    } else if input.just_pressed(KeyCode::KeyC) {
+        state.set(DrawMode::Circle);
+    } else if input.just_pressed(KeyCode::KeyA) {
+        state.set(DrawMode::Arc);
     }
 }
