@@ -1,8 +1,10 @@
+mod cursor;
+mod reload;
+
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_simple_subsecond_system::*;
 use cursor::{Cursor, CursorPlugin};
-
-mod cursor;
+use reload::{ReloadLevel, Reloadable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, States, Default, Reflect)]
 pub enum DrawMode {
@@ -16,9 +18,6 @@ pub enum DrawMode {
 }
 
 pub const DEFAULT_RESOLUTION: u32 = 64;
-
-#[derive(Component)]
-pub struct Reloadable;
 
 #[derive(Component, Debug, Default)]
 pub struct Dot {
@@ -43,7 +42,10 @@ fn main() {
         .add_plugins(CursorPlugin)
         .init_state::<DrawMode>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (change_draw_mode, handle_drawing, handle_reload))
+        .add_systems(
+            Update,
+            (change_draw_mode, handle_drawing, draw_dots, handle_reload),
+        )
         .run();
 }
 
@@ -62,15 +64,15 @@ fn setup(
             ..OrthographicProjection::default_3d()
         }),
         Transform::from_xyz(0., 1., 0.).looking_at(Vec3::ZERO, Dir3::Z),
-        Reloadable,
+        Reloadable::default(),
     ));
 
-    commands.spawn((DirectionalLight::default(), Reloadable));
+    commands.spawn((DirectionalLight::default(), Reloadable::default()));
 
     commands.spawn((
         Mesh3d(meshes.add(Cone::new(0.5, 1.))),
         MeshMaterial3d(materials.add(Color::srgb(0.5, 0.8, 0.1))),
-        Reloadable,
+        Reloadable::default(),
     ));
 }
 
@@ -123,13 +125,33 @@ fn handle_drawing(
         }
         DrawMode::Dot => {
             if input.just_pressed(MouseButton::Left) {
-                commands.spawn(Dot {
-                    position: cursor.position,
-                });
+                commands.spawn((
+                    Dot {
+                        position: cursor.position,
+                    },
+                    Reloadable {
+                        level: ReloadLevel::Hard,
+                    },
+                ));
             }
         }
         _ => {
             return;
         }
+    }
+}
+
+#[hot]
+fn draw_dots(mut gizmos: Gizmos, query: Query<&Dot>) {
+    for dot in query.iter() {
+        // println!("{:?}", dot);
+        gizmos.circle(
+            Isometry3d::new(
+                dot.position + Dir3::Y * 0.,
+                Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
+            ),
+            0.05,
+            Color::WHITE,
+        );
     }
 }

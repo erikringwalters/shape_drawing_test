@@ -10,15 +10,14 @@ pub struct CursorPlugin;
 impl Plugin for CursorPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(Cursor::default())
-            .add_systems(Update, draw_cursor);
+            .add_systems(Update, update_cursor); //, draw_cursor));
     }
 }
 
 #[hot]
-fn draw_cursor(
+fn update_cursor(
     camera_query: Single<(&Camera, &GlobalTransform)>,
     windows: Query<&Window>,
-    mut gizmos: Gizmos,
     mut cursor: ResMut<Cursor>,
 ) {
     let Ok(windows) = windows.single() else {
@@ -41,8 +40,10 @@ fn draw_cursor(
         return;
     };
     cursor.position = ray.get_point(distance);
+}
 
-    // Draw a circle just above the floor plane at that position.
+#[hot]
+fn draw_cursor(mut gizmos: Gizmos, cursor: Res<Cursor>) {
     gizmos.circle(
         Isometry3d::new(
             cursor.position + Dir3::Y * 0.,
