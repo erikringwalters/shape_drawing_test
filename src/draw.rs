@@ -56,41 +56,29 @@ impl Plugin for DrawPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<DrawMode>()
             .insert_resource(CurrentPositions::default())
-            .add_systems(
-                Update,
-                (
-                    change_draw_mode,
-                    handle_drawing,
-                    display_lines,
-                    display_dots,
-                )
-                    .chain(),
-            );
+            .add_systems(PreUpdate, (change_draw_mode, handle_drawing).chain())
+            .add_systems(Update, (display_lines, display_dots).chain());
     }
 }
 
 #[hot]
 fn change_draw_mode(
-    input: Res<ButtonInput<KeyCode>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<NextState<DrawMode>>,
     current_positions: ResMut<CurrentPositions>,
 ) {
-    // let key = input.get_just_pressed();
-    // match key {
-    // TODO: try changing this logic to a match statement
-    // }
-    if input.just_pressed(KeyCode::Escape) {
+    if keyboard.just_pressed(KeyCode::Escape) {
         reset_current_positions(current_positions);
         state.set(DrawMode::None);
-    } else if input.just_pressed(KeyCode::KeyD) {
+    } else if keyboard.just_pressed(KeyCode::KeyD) {
         state.set(DrawMode::Dot);
-    } else if input.just_pressed(KeyCode::KeyS) {
+    } else if keyboard.just_pressed(KeyCode::KeyS) {
         state.set(DrawMode::Line);
-    } else if input.just_pressed(KeyCode::KeyR) {
+    } else if keyboard.just_pressed(KeyCode::KeyR) {
         state.set(DrawMode::Rectangle);
-    } else if input.just_pressed(KeyCode::KeyC) {
+    } else if keyboard.just_pressed(KeyCode::KeyC) {
         state.set(DrawMode::Circle);
-    } else if input.just_pressed(KeyCode::KeyA) {
+    } else if keyboard.just_pressed(KeyCode::KeyA) {
         state.set(DrawMode::Arc);
     }
 }
@@ -98,7 +86,7 @@ fn change_draw_mode(
 #[hot]
 fn handle_drawing(
     commands: Commands,
-    input: Res<ButtonInput<MouseButton>>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
     state: Res<State<DrawMode>>,
     cursor: Res<Cursor>,
     current_positions: ResMut<CurrentPositions>,
@@ -108,9 +96,9 @@ fn handle_drawing(
             return;
         }
         DrawMode::Dot => {
-            handle_draw_dot(commands, input, cursor);
+            handle_draw_dot(commands, mouse_input, cursor);
         }
-        DrawMode::Line => handle_draw_line(commands, input, cursor, current_positions),
+        DrawMode::Line => handle_draw_line(commands, mouse_input, cursor, current_positions),
         _ => {
             return;
         }
@@ -120,10 +108,10 @@ fn handle_drawing(
 #[hot]
 fn handle_draw_dot(
     mut commands: Commands,
-    input: Res<ButtonInput<MouseButton>>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
     cursor: Res<Cursor>,
 ) {
-    if !input.just_pressed(MouseButton::Left) {
+    if !mouse_input.just_pressed(MouseButton::Left) {
         return;
     }
     commands.spawn((
@@ -139,14 +127,17 @@ fn handle_draw_dot(
 #[hot]
 fn handle_draw_line(
     mut commands: Commands,
-    input: Res<ButtonInput<MouseButton>>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
     cursor: Res<Cursor>,
     mut current_positions: ResMut<CurrentPositions>,
 ) {
-    if !input.just_pressed(MouseButton::Left) {
+    if mouse_input.just_pressed(MouseButton::Right) {
+        reset_current_positions(current_positions);
         return;
     }
-    println!("{:?}", current_positions.start);
+    if !mouse_input.just_pressed(MouseButton::Left) {
+        return;
+    }
     if current_positions.start == DEFAULT_POS {
         current_positions.start = cursor.position;
     } else if current_positions.end == DEFAULT_POS {
