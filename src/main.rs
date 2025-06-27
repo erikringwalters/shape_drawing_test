@@ -1,6 +1,8 @@
 mod cursor;
 mod reload;
 
+use std::thread::current;
+
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_simple_subsecond_system::*;
 use cursor::{Cursor, CursorPlugin};
@@ -18,6 +20,7 @@ pub enum DrawMode {
 }
 
 pub const DEFAULT_RESOLUTION: u32 = 64;
+pub const DEFAULT_POS: Vec3 = Vec3::splat(f32::MIN);
 
 #[derive(Component, Debug, Default)]
 pub struct Dot {
@@ -26,13 +29,29 @@ pub struct Dot {
 
 #[derive(Component, Debug, Default)]
 pub struct Line {
-    positions: Vec<Vec3>,
+    start: Vec3,
+    end: Vec3,
 }
 
 #[derive(Component, Debug, Default)]
 pub struct Circle {
     center: Vec3,
     radius: f32,
+}
+
+#[derive(Resource, Debug, PartialEq)]
+pub struct CurrentPositions {
+    start: Vec3,
+    end: Vec3,
+}
+
+impl Default for CurrentPositions {
+    fn default() -> Self {
+        CurrentPositions {
+            start: DEFAULT_POS,
+            end: DEFAULT_POS,
+        }
+    }
 }
 
 fn main() {
@@ -42,8 +61,18 @@ fn main() {
         .add_plugins(CursorPlugin)
         .add_plugins(ReloadPlugin)
         .init_state::<DrawMode>()
+        .insert_resource(CurrentPositions::default())
         .add_systems(Startup, setup)
-        .add_systems(Update, (change_draw_mode, handle_drawing, draw_dots))
+        .add_systems(
+            Update,
+            (
+                change_draw_mode,
+                handle_drawing,
+                display_lines,
+                display_dots,
+            )
+                .chain(),
+        )
         .run();
 }
 
@@ -75,8 +104,17 @@ pub fn setup(
 }
 
 #[hot]
-fn change_draw_mode(input: Res<ButtonInput<KeyCode>>, mut state: ResMut<NextState<DrawMode>>) {
+fn change_draw_mode(
+    input: Res<ButtonInput<KeyCode>>,
+    mut state: ResMut<NextState<DrawMode>>,
+    current_positions: ResMut<CurrentPositions>,
+) {
+    // let key = input.get_just_pressed();
+    // match key {
+    // TODO: try changing this logic to a match statement
+    // }
     if input.just_pressed(KeyCode::Escape) {
+        reset_current_positions(current_positions);
         state.set(DrawMode::None);
     } else if input.just_pressed(KeyCode::KeyD) {
         state.set(DrawMode::Dot);
@@ -93,10 +131,11 @@ fn change_draw_mode(input: Res<ButtonInput<KeyCode>>, mut state: ResMut<NextStat
 
 #[hot]
 fn handle_drawing(
-    mut commands: Commands,
+    commands: Commands,
     input: Res<ButtonInput<MouseButton>>,
     state: Res<State<DrawMode>>,
     cursor: Res<Cursor>,
+    current_positions: ResMut<CurrentPositions>,
 ) {
     // println!("State: {:?}", state);
     match state.get() {
@@ -104,17 +143,9 @@ fn handle_drawing(
             return;
         }
         DrawMode::Dot => {
-            if input.just_pressed(MouseButton::Left) {
-                commands.spawn((
-                    Dot {
-                        position: cursor.position,
-                    },
-                    Reloadable {
-                        level: ReloadLevel::Hard,
-                    },
-                ));
-            }
+            handle_draw_dot(commands, input, cursor);
         }
+        DrawMode::Line => handle_draw_line(commands, input, cursor, current_positions),
         _ => {
             return;
         }
@@ -122,9 +153,73 @@ fn handle_drawing(
 }
 
 #[hot]
-fn draw_dots(mut gizmos: Gizmos, query: Query<&Dot>) {
+fn handle_draw_dot(
+    mut commands: Commands,
+    input: Res<ButtonInput<MouseButton>>,
+    cursor: Res<Cursor>,
+) {
+    if !input.just_pressed(MouseButton::Left) {
+        return;
+    }
+    commands.spawn((
+        Dot {
+            position: cursor.position,
+        },
+        Reloadable {
+            level: ReloadLevel::Hard,
+        },
+    ));
+}
+
+#[hot]
+fn handle_draw_line(
+    mut commands: Commands,
+    input: Res<ButtonInput<MouseButton>>,
+    cursor: Res<Cursor>,
+    mut current_positions: ResMut<CurrentPositions>,
+) {
+    if !input.just_pressed(MouseButton::Left) {
+        return;
+    }
+    println!("{:?}", current_positions.start);
+    if current_positions.start == DEFAULT_POS {
+        current_positions.start = cursor.position;
+    } else if current_positions.end == DEFAULT_POS {
+        current_positions.end = cursor.position;
+    }
+    commands.spawn((
+        Dot {
+            position: cursor.position,
+        },
+        Reloadable {
+            level: ReloadLevel::Hard,
+        },
+    ));
+
+    // Draw line if start and end are valid
+    if current_positions.start != DEFAULT_POS && current_positions.end != DEFAULT_POS {
+        commands.spawn((
+            Line {
+                start: current_positions.start,
+                end: current_positions.end,
+            },
+            Reloadable {
+                level: ReloadLevel::Hard,
+            },
+        ));
+        current_positions.start = current_positions.end;
+        current_positions.end = DEFAULT_POS;
+    }
+}
+
+#[hot]
+fn reset_current_positions(mut current_positions: ResMut<CurrentPositions>) {
+    *current_positions = CurrentPositions::default();
+}
+
+#[hot]
+fn display_dots(mut gizmos: Gizmos, query: Query<&Dot>) {
     for dot in query.iter() {
-        // println!("{:?}", dot);
         gizmos.circle(
             Isometry3d::new(
                 dot.position + Dir3::Y * 0.,
@@ -133,5 +228,20 @@ fn draw_dots(mut gizmos: Gizmos, query: Query<&Dot>) {
             0.05,
             Color::WHITE,
         );
+    }
+}
+
+#[hot]
+fn display_lines(
+    mut gizmos: Gizmos,
+    query: Query<&Line>,
+    cursor: Res<Cursor>,
+    current_positions: ResMut<CurrentPositions>,
+) {
+    for line in query.iter() {
+        gizmos.line(line.start, line.end, Color::WHITE);
+    }
+    if current_positions.start != DEFAULT_POS {
+        gizmos.line(current_positions.start, cursor.position, Color::WHITE);
     }
 }
