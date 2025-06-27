@@ -4,7 +4,7 @@ mod reload;
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_simple_subsecond_system::*;
 use cursor::{Cursor, CursorPlugin};
-use reload::{ReloadLevel, Reloadable};
+use reload::{ReloadLevel, ReloadPlugin, Reloadable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, States, Default, Reflect)]
 pub enum DrawMode {
@@ -40,17 +40,15 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(SimpleSubsecondPlugin::default())
         .add_plugins(CursorPlugin)
+        .add_plugins(ReloadPlugin)
         .init_state::<DrawMode>()
         .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (change_draw_mode, handle_drawing, draw_dots, handle_reload),
-        )
+        .add_systems(Update, (change_draw_mode, handle_drawing, draw_dots))
         .run();
 }
 
 #[hot]
-fn setup(
+pub fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -74,24 +72,6 @@ fn setup(
         MeshMaterial3d(materials.add(Color::srgb(0.5, 0.8, 0.1))),
         Reloadable::default(),
     ));
-}
-
-#[hot]
-fn handle_reload(
-    input: Res<ButtonInput<KeyCode>>,
-    mut commands: Commands,
-    meshes: ResMut<Assets<Mesh>>,
-    materials: ResMut<Assets<StandardMaterial>>,
-    query: Query<Entity, With<Reloadable>>,
-) {
-    if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyR) {
-        println!("Reloading...");
-        for entity in query.iter() {
-            commands.entity(entity).despawn();
-        }
-        setup(commands, meshes, materials);
-        println!("Reloaded.")
-    }
 }
 
 #[hot]
