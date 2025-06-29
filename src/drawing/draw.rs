@@ -7,6 +7,8 @@ use bevy_simple_subsecond_system::*;
 
 use super::circle::CirclePlugin;
 use super::circle::handle_draw_circle;
+use super::rectangle::RectanglePlugin;
+use super::rectangle::handle_draw_rectangle;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, States, Default, Reflect)]
 pub enum DrawMode {
@@ -51,6 +53,7 @@ impl Plugin for DrawPlugin {
             .insert_resource(LineChain::default())
             .add_plugins(DotPlugin)
             .add_plugins(LinePlugin)
+            .add_plugins(RectanglePlugin)
             .add_plugins(CirclePlugin)
             .add_systems(Update, (change_draw_mode, handle_drawing).chain());
     }
@@ -102,6 +105,9 @@ fn handle_drawing(
         }
         DrawMode::Line => {
             handle_draw_line(commands, mouse_input, cursor, current_positions, line_chain);
+        }
+        DrawMode::Rectangle => {
+            handle_draw_rectangle(commands, mouse_input, cursor, current_positions);
         }
         DrawMode::Circle => {
             handle_draw_circle(commands, mouse_input, cursor, current_positions);

@@ -8,8 +8,8 @@ use crate::{
 
 #[derive(Component, Debug, Default)]
 pub struct Line {
-    start: Vec3,
-    end: Vec3,
+    pub start: Vec3,
+    pub end: Vec3,
 }
 
 use super::{
