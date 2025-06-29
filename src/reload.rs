@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy_simple_subsecond_system::hot;
 
-use crate::setup;
+use crate::{
+    draw::{self, CurrentPositions, LineChain},
+    setup,
+};
 
 #[derive(Default, Debug, Eq, PartialEq, PartialOrd, Ord)]
 pub enum ReloadLevel {
@@ -30,6 +33,8 @@ fn handle_reload(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<StandardMaterial>>,
     query: Query<(Entity, &Reloadable)>,
+    current_positions: ResMut<CurrentPositions>,
+    line_chain: ResMut<LineChain>,
 ) {
     if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyR) {
         let reload_level = if input.pressed(KeyCode::ShiftLeft) {
@@ -42,7 +47,13 @@ fn handle_reload(
                 commands.entity(entity).despawn();
             }
         }
+        draw::reset_drawing(current_positions, line_chain);
         setup(commands, meshes, materials);
-        println!("Reloaded.")
+        let message = if reload_level == ReloadLevel::Soft {
+            "Soft reloaded."
+        } else {
+            "Hard reloaded."
+        };
+        println!("{:?}", message);
     }
 }

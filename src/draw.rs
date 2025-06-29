@@ -81,21 +81,25 @@ fn change_draw_mode(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<NextState<DrawMode>>,
     current_positions: ResMut<CurrentPositions>,
-    mut line_chain: ResMut<LineChain>,
+    line_chain: ResMut<LineChain>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
-        reset_current_positions(current_positions);
-        line_chain.count = 0;
+        reset_drawing(current_positions, line_chain);
         state.set(DrawMode::None);
     } else if keyboard.just_pressed(KeyCode::KeyD) {
+        reset_drawing(current_positions, line_chain);
         state.set(DrawMode::Dot);
     } else if keyboard.just_pressed(KeyCode::KeyS) {
+        reset_drawing(current_positions, line_chain);
         state.set(DrawMode::Line);
     } else if keyboard.just_pressed(KeyCode::KeyR) {
+        reset_drawing(current_positions, line_chain);
         state.set(DrawMode::Rectangle);
     } else if keyboard.just_pressed(KeyCode::KeyC) {
+        reset_drawing(current_positions, line_chain);
         state.set(DrawMode::Circle);
     } else if keyboard.just_pressed(KeyCode::KeyA) {
+        reset_drawing(current_positions, line_chain);
         state.set(DrawMode::Arc);
     }
 }
@@ -156,8 +160,7 @@ fn handle_draw_line(
     mut line_chain: ResMut<LineChain>,
 ) {
     if mouse_input.just_pressed(MouseButton::Right) {
-        reset_current_positions(current_positions);
-        line_chain.count = 0;
+        reset_drawing(current_positions, line_chain);
         return;
     }
     if !mouse_input.just_pressed(MouseButton::Left) {
@@ -256,6 +259,15 @@ fn handle_draw_circle(
 }
 
 #[hot]
+pub fn reset_drawing(
+    current_positions: ResMut<CurrentPositions>,
+    mut line_chain: ResMut<LineChain>,
+) {
+    reset_current_positions(current_positions);
+    line_chain.count = 0
+}
+
+#[hot]
 fn reset_current_positions(mut current_positions: ResMut<CurrentPositions>) {
     *current_positions = CurrentPositions::default();
 }
@@ -283,11 +295,11 @@ fn display_lines(
     state: Res<State<DrawMode>>,
     current_positions: ResMut<CurrentPositions>,
 ) {
-    // Draw existing lines
+    // Display existing lines
     for line in query.iter() {
         gizmos.line(line.start, line.end, Color::WHITE);
     }
-    // Draw currently created line
+    // Display currently drawn line
     if state.get() == &DrawMode::Line && current_positions.start != DEFAULT_POS {
         gizmos.line(current_positions.start, cursor.position, Color::WHITE);
     }
@@ -301,7 +313,7 @@ fn display_circles(
     state: Res<State<DrawMode>>,
     current_positions: ResMut<CurrentPositions>,
 ) {
-    // Draw existing circles
+    // Display existing circles
     for circle in query.iter() {
         gizmos
             .circle(
@@ -314,7 +326,7 @@ fn display_circles(
             )
             .resolution(DEFAULT_RESOLUTION);
     }
-    // Draw currently created circle
+    // Display currently drawn circle
     if state.get() == &DrawMode::Circle && current_positions.start != DEFAULT_POS {
         gizmos
             .circle(
