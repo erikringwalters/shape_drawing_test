@@ -29,11 +29,11 @@ pub struct Line {
     end: Vec3,
 }
 
-// #[derive(Component, Debug, Default)]
-// pub struct Circle {
-//     center: Vec3,
-//     radius: f32,
-// }
+#[derive(Component, Debug, Default)]
+pub struct Circle {
+    center: Vec3,
+    radius: f32,
+}
 
 #[derive(Resource, Debug, PartialEq)]
 pub struct CurrentPositions {
@@ -56,8 +56,17 @@ impl Plugin for DrawPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<DrawMode>()
             .insert_resource(CurrentPositions::default())
-            .add_systems(PreUpdate, (change_draw_mode, handle_drawing).chain())
-            .add_systems(Update, (display_lines, display_dots).chain());
+            .add_systems(
+                Update,
+                (
+                    change_draw_mode,
+                    handle_drawing,
+                    display_lines,
+                    display_circles,
+                    display_dots,
+                )
+                    .chain(),
+            );
     }
 }
 
@@ -98,7 +107,12 @@ fn handle_drawing(
         DrawMode::Dot => {
             handle_draw_dot(commands, mouse_input, cursor);
         }
-        DrawMode::Line => handle_draw_line(commands, mouse_input, cursor, current_positions),
+        DrawMode::Line => {
+            handle_draw_line(commands, mouse_input, cursor, current_positions);
+        }
+        DrawMode::Circle => {
+            handle_draw_circle(commands, mouse_input, cursor, current_positions);
+        }
         _ => {
             return;
         }
@@ -131,6 +145,7 @@ fn handle_draw_line(
     cursor: Res<Cursor>,
     mut current_positions: ResMut<CurrentPositions>,
 ) {
+    // TODO: keep track of incrementor and if i == 0, add "Temporary" component to first Dot.
     if mouse_input.just_pressed(MouseButton::Right) {
         reset_current_positions(current_positions);
         return;
@@ -169,6 +184,49 @@ fn handle_draw_line(
 }
 
 #[hot]
+fn handle_draw_circle(
+    mut commands: Commands,
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    cursor: Res<Cursor>,
+    mut current_positions: ResMut<CurrentPositions>,
+) {
+    if mouse_input.just_pressed(MouseButton::Right) {
+        reset_current_positions(current_positions);
+        return;
+    }
+    if !mouse_input.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    if current_positions.start == DEFAULT_POS {
+        current_positions.start = cursor.position;
+        commands.spawn((
+            Dot {
+                position: cursor.position,
+            },
+            Reloadable {
+                level: ReloadLevel::Hard,
+            },
+        ));
+    } else if current_positions.end == DEFAULT_POS {
+        current_positions.end = cursor.position;
+    }
+
+    if current_positions.start != DEFAULT_POS && current_positions.end != DEFAULT_POS {
+        commands.spawn((
+            Circle {
+                center: current_positions.start,
+                radius: (current_positions.end - current_positions.start).length(),
+            },
+            Reloadable {
+                level: ReloadLevel::Hard,
+            },
+        ));
+        reset_current_positions(current_positions);
+    }
+}
+
+#[hot]
 fn reset_current_positions(mut current_positions: ResMut<CurrentPositions>) {
     *current_positions = CurrentPositions::default();
 }
@@ -199,5 +257,34 @@ fn display_lines(
     }
     if current_positions.start != DEFAULT_POS {
         gizmos.line(current_positions.start, cursor.position, Color::WHITE);
+    }
+}
+
+#[hot]
+fn display_circles(
+    mut gizmos: Gizmos,
+    query: Query<&Circle>,
+    cursor: Res<Cursor>,
+    current_positions: ResMut<CurrentPositions>,
+) {
+    for circle in query.iter() {
+        gizmos.circle(
+            Isometry3d::new(
+                circle.center + Dir3::Y * 0.,
+                Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
+            ),
+            circle.radius,
+            Color::WHITE,
+        );
+    }
+    if current_positions.start != DEFAULT_POS {
+        gizmos.circle(
+            Isometry3d::new(
+                current_positions.start + Dir3::Y * 0.,
+                Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
+            ),
+            (cursor.position - current_positions.start).length(),
+            Color::WHITE,
+        );
     }
 }
