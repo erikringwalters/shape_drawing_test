@@ -15,7 +15,7 @@ pub enum DrawMode {
     Arc,
 }
 
-// pub const DEFAULT_RESOLUTION: u32 = 64;
+pub const DEFAULT_RESOLUTION: u32 = 64;
 pub const DEFAULT_POS: Vec3 = Vec3::splat(f32::MIN);
 
 #[derive(Component, Debug, Default)]
@@ -41,6 +41,11 @@ pub struct CurrentPositions {
     end: Vec3,
 }
 
+#[derive(Resource, Default, Debug, PartialEq, PartialOrd)]
+pub struct LineChain {
+    count: u32,
+}
+
 impl Default for CurrentPositions {
     fn default() -> Self {
         CurrentPositions {
@@ -56,6 +61,7 @@ impl Plugin for DrawPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<DrawMode>()
             .insert_resource(CurrentPositions::default())
+            .insert_resource(LineChain::default())
             .add_systems(
                 Update,
                 (
@@ -75,9 +81,11 @@ fn change_draw_mode(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut state: ResMut<NextState<DrawMode>>,
     current_positions: ResMut<CurrentPositions>,
+    mut line_chain: ResMut<LineChain>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
         reset_current_positions(current_positions);
+        line_chain.count = 0;
         state.set(DrawMode::None);
     } else if keyboard.just_pressed(KeyCode::KeyD) {
         state.set(DrawMode::Dot);
@@ -99,6 +107,7 @@ fn handle_drawing(
     state: Res<State<DrawMode>>,
     cursor: Res<Cursor>,
     current_positions: ResMut<CurrentPositions>,
+    line_chain: ResMut<LineChain>,
 ) {
     match state.get() {
         DrawMode::None => {
@@ -108,7 +117,7 @@ fn handle_drawing(
             handle_draw_dot(commands, mouse_input, cursor);
         }
         DrawMode::Line => {
-            handle_draw_line(commands, mouse_input, cursor, current_positions);
+            handle_draw_line(commands, mouse_input, cursor, current_positions, line_chain);
         }
         DrawMode::Circle => {
             handle_draw_circle(commands, mouse_input, cursor, current_positions);
@@ -144,31 +153,46 @@ fn handle_draw_line(
     mouse_input: Res<ButtonInput<MouseButton>>,
     cursor: Res<Cursor>,
     mut current_positions: ResMut<CurrentPositions>,
+    mut line_chain: ResMut<LineChain>,
 ) {
-    // TODO: keep track of incrementor and if i == 0, add "Temporary" component to first Dot.
     if mouse_input.just_pressed(MouseButton::Right) {
         reset_current_positions(current_positions);
+        line_chain.count = 0;
         return;
     }
     if !mouse_input.just_pressed(MouseButton::Left) {
         return;
     }
+    // Define start of line
     if current_positions.start == DEFAULT_POS {
         current_positions.start = cursor.position;
-    } else if current_positions.end == DEFAULT_POS {
+    }
+    // Define end of line
+    else if current_positions.end == DEFAULT_POS {
         current_positions.end = cursor.position;
     }
-    commands.spawn((
-        Dot {
-            position: cursor.position,
-        },
-        Reloadable {
-            level: ReloadLevel::Hard,
-        },
-    ));
 
-    // Draw line if start and end are valid
+    // Create line and dots entities if both start and end are defined
     if current_positions.start != DEFAULT_POS && current_positions.end != DEFAULT_POS {
+        if line_chain.count == 0 {
+            commands.spawn((
+                Dot {
+                    position: current_positions.start,
+                },
+                Reloadable {
+                    level: ReloadLevel::Hard,
+                },
+            ));
+        }
+
+        commands.spawn((
+            Dot {
+                position: current_positions.end,
+            },
+            Reloadable {
+                level: ReloadLevel::Hard,
+            },
+        ));
         commands.spawn((
             Line {
                 start: current_positions.start,
@@ -180,6 +204,7 @@ fn handle_draw_line(
         ));
         current_positions.start = current_positions.end;
         current_positions.end = DEFAULT_POS;
+        line_chain.count += 1;
     }
 }
 
@@ -198,21 +223,25 @@ fn handle_draw_circle(
         return;
     }
 
+    // Define start (center) of circle
     if current_positions.start == DEFAULT_POS {
         current_positions.start = cursor.position;
+    }
+    // Define end (radius)
+    else if current_positions.end == DEFAULT_POS {
+        current_positions.end = cursor.position;
+    }
+
+    // Create circle entity if both start and end are defined
+    if current_positions.start != DEFAULT_POS && current_positions.end != DEFAULT_POS {
         commands.spawn((
             Dot {
-                position: cursor.position,
+                position: current_positions.start,
             },
             Reloadable {
                 level: ReloadLevel::Hard,
             },
         ));
-    } else if current_positions.end == DEFAULT_POS {
-        current_positions.end = cursor.position;
-    }
-
-    if current_positions.start != DEFAULT_POS && current_positions.end != DEFAULT_POS {
         commands.spawn((
             Circle {
                 center: current_positions.start,
@@ -233,6 +262,7 @@ fn reset_current_positions(mut current_positions: ResMut<CurrentPositions>) {
 
 #[hot]
 fn display_dots(mut gizmos: Gizmos, query: Query<&Dot>) {
+    // Draw existing dots
     for dot in query.iter() {
         gizmos.circle(
             Isometry3d::new(
@@ -250,12 +280,15 @@ fn display_lines(
     mut gizmos: Gizmos,
     query: Query<&Line>,
     cursor: Res<Cursor>,
+    state: Res<State<DrawMode>>,
     current_positions: ResMut<CurrentPositions>,
 ) {
+    // Draw existing lines
     for line in query.iter() {
         gizmos.line(line.start, line.end, Color::WHITE);
     }
-    if current_positions.start != DEFAULT_POS {
+    // Draw currently created line
+    if state.get() == &DrawMode::Line && current_positions.start != DEFAULT_POS {
         gizmos.line(current_positions.start, cursor.position, Color::WHITE);
     }
 }
@@ -265,26 +298,33 @@ fn display_circles(
     mut gizmos: Gizmos,
     query: Query<&Circle>,
     cursor: Res<Cursor>,
+    state: Res<State<DrawMode>>,
     current_positions: ResMut<CurrentPositions>,
 ) {
+    // Draw existing circles
     for circle in query.iter() {
-        gizmos.circle(
-            Isometry3d::new(
-                circle.center + Dir3::Y * 0.,
-                Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
-            ),
-            circle.radius,
-            Color::WHITE,
-        );
+        gizmos
+            .circle(
+                Isometry3d::new(
+                    circle.center + Dir3::Y * 0.,
+                    Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
+                ),
+                circle.radius,
+                Color::WHITE,
+            )
+            .resolution(DEFAULT_RESOLUTION);
     }
-    if current_positions.start != DEFAULT_POS {
-        gizmos.circle(
-            Isometry3d::new(
-                current_positions.start + Dir3::Y * 0.,
-                Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
-            ),
-            (cursor.position - current_positions.start).length(),
-            Color::WHITE,
-        );
+    // Draw currently created circle
+    if state.get() == &DrawMode::Circle && current_positions.start != DEFAULT_POS {
+        gizmos
+            .circle(
+                Isometry3d::new(
+                    current_positions.start + Dir3::Y * 0.,
+                    Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
+                ),
+                (cursor.position - current_positions.start).length(),
+                Color::WHITE,
+            )
+            .resolution(DEFAULT_RESOLUTION);
     }
 }
