@@ -1,11 +1,11 @@
 mod cursor;
-mod draw;
+mod drawing;
 mod reload;
 
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_simple_subsecond_system::*;
 use cursor::CursorPlugin;
-use draw::DrawPlugin;
+use drawing::draw::DrawPlugin;
 use reload::{ReloadPlugin, Reloadable};
 
 fn main() {

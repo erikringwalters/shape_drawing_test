@@ -2,7 +2,10 @@ use bevy::prelude::*;
 use bevy_simple_subsecond_system::hot;
 
 use crate::{
-    draw::{self, CurrentPositions, LineChain},
+    drawing::{
+        self,
+        draw::{CurrentPositions, LineChain},
+    },
     setup,
 };
 
@@ -47,7 +50,7 @@ fn handle_reload(
                 commands.entity(entity).despawn();
             }
         }
-        draw::reset_drawing(current_positions, line_chain);
+        drawing::draw::reset_drawing(current_positions, line_chain);
         setup(commands, meshes, materials);
         let message = if reload_level == ReloadLevel::Soft {
             "Soft reloaded."
