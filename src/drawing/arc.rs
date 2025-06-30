@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{math::ops::acos, prelude::*};
 use bevy_simple_subsecond_system::*;
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     dot::Dot,
-    draw::{CurrentDrawing, DEFAULT_POS, reset_current_drawing},
+    draw::{CurrentDrawing, DEFAULT_POS, DEFAULT_RESOLUTION, DrawMode, reset_current_drawing},
 };
 
 #[derive(Component, Debug, Default)]
@@ -33,36 +33,102 @@ pub fn handle_draw_arc(
     cursor: Res<Cursor>,
     mut current_drawing: ResMut<CurrentDrawing>,
 ) {
-    // if mouse_input.just_pressed(MouseButton::Right) {
-    //     reset_current_drawing(current_drawing);
-    //     return;
-    // }
-    // if !mouse_input.just_pressed(MouseButton::Left) {
-    //     return;
-    // }
+    if mouse_input.just_pressed(MouseButton::Right) {
+        reset_current_drawing(current_drawing);
+        return;
+    }
+    if !mouse_input.just_pressed(MouseButton::Left) {
+        return;
+    }
 
-    // // Define start (center) of circle
-    // if current_drawing.start == DEFAULT_POS {
-    //     current_drawing.start = cursor.position;
-    // }
-    // // Define end (radius)
-    // else if current_drawing.end == DEFAULT_POS {
-    //     current_drawing.end = cursor.position;
-    // }
+    // Define center of arc
+    if current_drawing.position[0] == DEFAULT_POS {
+        current_drawing.position[0] = cursor.position;
+    }
+    // Define start of arc
+    else if current_drawing.position[1] == DEFAULT_POS {
+        current_drawing.position[1] = cursor.position;
+    }
+    // Define end of arc
+    else if current_drawing.position[2] == DEFAULT_POS {
+        current_drawing.position[2] = cursor.position;
+    }
 
-    // // Create circle entity if both start and end are defined
-    // if current_drawing.start != DEFAULT_POS && current_drawing.end != DEFAULT_POS {
-    //     commands.spawn((
-    //         Dot {
-    //             position: current_drawing.start,
-    //         },
-    //         Reloadable {
-    //             level: ReloadLevel::Hard,
-    //         },
-    //     ));
-    //     reset_current_drawing(current_drawing);
-    // }
+    for position in current_drawing.position {
+        println!("{:?}", position);
+    }
+    println!("");
+
+    let center = current_drawing.position[0];
+    let start = current_drawing.position[1];
+    let end = current_drawing.position[2];
+
+    // Create arc entity if center, start, and end are all defined
+    if center != DEFAULT_POS && start != DEFAULT_POS && end != DEFAULT_POS {
+        commands.spawn((
+            Dot { position: start },
+            Reloadable {
+                level: ReloadLevel::Hard,
+            },
+        ));
+        commands.spawn((
+            Arc {
+                center: center,
+                start: start,
+                end: end,
+            },
+            Reloadable {
+                level: ReloadLevel::Hard,
+            },
+        ));
+        reset_current_drawing(current_drawing);
+    }
 }
 
 #[hot]
-pub fn display_arcs() {}
+pub fn display_arcs(
+    mut gizmos: Gizmos,
+    query: Query<&Arc>,
+    cursor: Res<Cursor>,
+    state: Res<State<DrawMode>>,
+    current_drawing: ResMut<CurrentDrawing>,
+) {
+    // Display existing circles
+    for arc in query.iter() {
+        let a = (arc.center - arc.end).length();
+        let b = (arc.start - arc.end).length();
+        let c = (arc.center - arc.start).length();
+        let theta = acos((a.powf(2.0) + b.powf(2.0) - c.powf(2.0)) / 2.0 * a * b); // 180.0_f32.to_radians(); 
+        gizmos
+            .arc_3d(
+                theta,
+                (arc.end - arc.center).length(),
+                Isometry3d::new(
+                    arc.center + Dir3::Y * 0.,
+                    Quat::from_rotation_arc(Vec3::Z, Dir3::X.as_vec3()),
+                ),
+                Color::WHITE,
+            )
+            .resolution(DEFAULT_RESOLUTION);
+    }
+    // Display currently drawn circle
+    if state.get() == &DrawMode::Arc && current_drawing.position[0] != DEFAULT_POS {
+        let center = current_drawing.position[0];
+        let start = current_drawing.position[1];
+        let radius = if start != DEFAULT_POS {
+            (start - center).length()
+        } else {
+            (cursor.position - center).length()
+        };
+        gizmos
+            .circle(
+                Isometry3d::new(
+                    center + Dir3::Y * 0.,
+                    Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
+                ),
+                radius,
+                Color::WHITE,
+            )
+            .resolution(DEFAULT_RESOLUTION);
+    }
+}
