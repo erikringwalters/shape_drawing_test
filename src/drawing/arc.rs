@@ -1,4 +1,7 @@
-use bevy::{math::ops::acos, prelude::*};
+use bevy::{
+    // math::ops::{abs, acos},
+    prelude::*,
+};
 use bevy_simple_subsecond_system::*;
 
 use crate::{
@@ -66,7 +69,7 @@ pub fn handle_draw_arc(
     // Create arc entity if center, start, and end are all defined
     if center != DEFAULT_POS && start != DEFAULT_POS && end != DEFAULT_POS {
         commands.spawn((
-            Dot { position: start },
+            Dot { position: center },
             Reloadable {
                 level: ReloadLevel::Hard,
             },
@@ -95,17 +98,17 @@ pub fn display_arcs(
 ) {
     // Display existing circles
     for arc in query.iter() {
-        let a = (arc.center - arc.end).length();
-        let b = (arc.start - arc.end).length();
-        let c = (arc.center - arc.start).length();
-        let theta = acos((a.powf(2.0) + b.powf(2.0) - c.powf(2.0)) / 2.0 * a * b); // 180.0_f32.to_radians(); 
+        // let a = (arc.end - arc.center).length();
+        // let b = (arc.end - arc.start).length();
+        // let c = (arc.start - arc.center).length();
+        let theta = 180.0_f32.to_radians(); // acos(a.powf(2.0) + b.powf(2.0) - c.powf(2.0)) / 2.0 * a * b;
         gizmos
             .arc_3d(
                 theta,
                 (arc.end - arc.center).length(),
                 Isometry3d::new(
                     arc.center + Dir3::Y * 0.,
-                    Quat::from_rotation_arc(Vec3::Z, Dir3::X.as_vec3()),
+                    Quat::from_rotation_arc(Vec3::Z, Dir3::X.as_vec3().normalize()),
                 ),
                 Color::WHITE,
             )
