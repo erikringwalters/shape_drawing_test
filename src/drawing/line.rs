@@ -14,7 +14,7 @@ pub struct Line {
 
 use super::{
     dot::Dot,
-    draw::{CurrentPositions, DEFAULT_POS, DrawMode, LineChain, reset_drawing},
+    draw::{CurrentDrawing, DEFAULT_POS, DrawMode, LineChain, reset_drawing},
 };
 
 pub struct LinePlugin;
@@ -30,32 +30,34 @@ pub fn handle_draw_line(
     mut commands: Commands,
     mouse_input: Res<ButtonInput<MouseButton>>,
     cursor: Res<Cursor>,
-    mut current_positions: ResMut<CurrentPositions>,
+    mut current_drawing: ResMut<CurrentDrawing>,
     mut line_chain: ResMut<LineChain>,
 ) {
     if mouse_input.just_pressed(MouseButton::Right) {
-        reset_drawing(current_positions, line_chain);
+        reset_drawing(current_drawing, line_chain);
         return;
     }
     if !mouse_input.just_pressed(MouseButton::Left) {
         return;
     }
+
     // Define start of line
-    if current_positions.start == DEFAULT_POS {
-        current_positions.start = cursor.position;
+    if current_drawing.position[0] == DEFAULT_POS {
+        current_drawing.position[0] = cursor.position;
     }
     // Define end of line
-    else if current_positions.end == DEFAULT_POS {
-        current_positions.end = cursor.position;
+    else if current_drawing.position[1] == DEFAULT_POS {
+        current_drawing.position[1] = cursor.position;
     }
 
+    let start = current_drawing.position[0];
+    let end = current_drawing.position[1];
+
     // Create line and dots entities if both start and end are defined
-    if current_positions.start != DEFAULT_POS && current_positions.end != DEFAULT_POS {
+    if start != DEFAULT_POS && end != DEFAULT_POS {
         if line_chain.count == 0 {
             commands.spawn((
-                Dot {
-                    position: current_positions.start,
-                },
+                Dot { position: start },
                 Reloadable {
                     level: ReloadLevel::Hard,
                 },
@@ -63,24 +65,22 @@ pub fn handle_draw_line(
         }
 
         commands.spawn((
-            Dot {
-                position: current_positions.end,
-            },
+            Dot { position: end },
             Reloadable {
                 level: ReloadLevel::Hard,
             },
         ));
         commands.spawn((
             Line {
-                start: current_positions.start,
-                end: current_positions.end,
+                start: start,
+                end: end,
             },
             Reloadable {
                 level: ReloadLevel::Hard,
             },
         ));
-        current_positions.start = current_positions.end;
-        current_positions.end = DEFAULT_POS;
+        current_drawing.position[0] = end;
+        current_drawing.position[1] = DEFAULT_POS;
         line_chain.count += 1;
     }
 }
@@ -91,14 +91,14 @@ fn display_lines(
     query: Query<&Line>,
     cursor: Res<Cursor>,
     state: Res<State<DrawMode>>,
-    current_positions: ResMut<CurrentPositions>,
+    current_drawing: ResMut<CurrentDrawing>,
 ) {
     // Display existing lines
     for line in query.iter() {
         gizmos.line(line.start, line.end, Color::WHITE);
     }
     // Display currently drawn line
-    if state.get() == &DrawMode::Line && current_positions.start != DEFAULT_POS {
-        gizmos.line(current_positions.start, cursor.position, Color::WHITE);
+    if state.get() == &DrawMode::Line && current_drawing.position[0] != DEFAULT_POS {
+        gizmos.line(current_drawing.position[0], cursor.position, Color::WHITE);
     }
 }

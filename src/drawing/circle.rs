@@ -8,7 +8,7 @@ use crate::{
 
 use super::{
     dot::Dot,
-    draw::{CurrentPositions, DEFAULT_POS, DEFAULT_RESOLUTION, DrawMode, reset_current_positions},
+    draw::{CurrentDrawing, DEFAULT_POS, DEFAULT_RESOLUTION, DrawMode, reset_current_drawing},
 };
 
 #[derive(Component, Debug, Default)]
@@ -30,45 +30,46 @@ pub fn handle_draw_circle(
     mut commands: Commands,
     mouse_input: Res<ButtonInput<MouseButton>>,
     cursor: Res<Cursor>,
-    mut current_positions: ResMut<CurrentPositions>,
+    mut current_drawing: ResMut<CurrentDrawing>,
 ) {
     if mouse_input.just_pressed(MouseButton::Right) {
-        reset_current_positions(current_positions);
+        reset_current_drawing(current_drawing);
         return;
     }
     if !mouse_input.just_pressed(MouseButton::Left) {
         return;
     }
 
-    // Define start (center) of circle
-    if current_positions.start == DEFAULT_POS {
-        current_positions.start = cursor.position;
+    // Define center of circle
+    if current_drawing.position[0] == DEFAULT_POS {
+        current_drawing.position[0] = cursor.position;
     }
-    // Define end (radius)
-    else if current_positions.end == DEFAULT_POS {
-        current_positions.end = cursor.position;
+    // Define end
+    else if current_drawing.position[1] == DEFAULT_POS {
+        current_drawing.position[1] = cursor.position;
     }
 
-    // Create circle entity if both start and end are defined
-    if current_positions.start != DEFAULT_POS && current_positions.end != DEFAULT_POS {
+    let center = current_drawing.position[0];
+    let end = current_drawing.position[1];
+
+    // Create circle entity if both center and end are defined
+    if center != DEFAULT_POS && end != DEFAULT_POS {
         commands.spawn((
-            Dot {
-                position: current_positions.start,
-            },
+            Dot { position: center },
             Reloadable {
                 level: ReloadLevel::Hard,
             },
         ));
         commands.spawn((
             Circle {
-                center: current_positions.start,
-                radius: (current_positions.end - current_positions.start).length(),
+                center: center,
+                radius: (end - center).length(),
             },
             Reloadable {
                 level: ReloadLevel::Hard,
             },
         ));
-        reset_current_positions(current_positions);
+        reset_current_drawing(current_drawing);
     }
 }
 
@@ -78,7 +79,7 @@ fn display_circles(
     query: Query<&Circle>,
     cursor: Res<Cursor>,
     state: Res<State<DrawMode>>,
-    current_positions: ResMut<CurrentPositions>,
+    current_drawing: ResMut<CurrentDrawing>,
 ) {
     // Display existing circles
     for circle in query.iter() {
@@ -94,14 +95,15 @@ fn display_circles(
             .resolution(DEFAULT_RESOLUTION);
     }
     // Display currently drawn circle
-    if state.get() == &DrawMode::Circle && current_positions.start != DEFAULT_POS {
+    if state.get() == &DrawMode::Circle && current_drawing.position[0] != DEFAULT_POS {
+        let center = current_drawing.position[0];
         gizmos
             .circle(
                 Isometry3d::new(
-                    current_positions.start + Dir3::Y * 0.,
+                    center + Dir3::Y * 0.,
                     Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
                 ),
-                (cursor.position - current_positions.start).length(),
+                (cursor.position - center).length(),
                 Color::WHITE,
             )
             .resolution(DEFAULT_RESOLUTION);

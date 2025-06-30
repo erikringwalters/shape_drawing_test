@@ -4,7 +4,7 @@ use bevy_simple_subsecond_system::hot;
 use crate::{
     drawing::{
         self,
-        draw::{CurrentPositions, LineChain},
+        draw::{CurrentDrawing, LineChain},
     },
     setup,
 };
@@ -36,7 +36,7 @@ fn handle_reload(
     meshes: ResMut<Assets<Mesh>>,
     materials: ResMut<Assets<StandardMaterial>>,
     query: Query<(Entity, &Reloadable)>,
-    current_positions: ResMut<CurrentPositions>,
+    current_drawing: ResMut<CurrentDrawing>,
     line_chain: ResMut<LineChain>,
 ) {
     if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyR) {
@@ -50,7 +50,7 @@ fn handle_reload(
                 commands.entity(entity).despawn();
             }
         }
-        drawing::draw::reset_drawing(current_positions, line_chain);
+        drawing::draw::reset_drawing(current_drawing, line_chain);
         setup(commands, meshes, materials);
         let message = if reload_level == ReloadLevel::Soft {
             "Soft reloaded."
