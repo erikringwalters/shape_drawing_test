@@ -1,8 +1,4 @@
-use bevy::{
-    // math::ops::{abs, acos},
-    math::ops::atan,
-    prelude::*,
-};
+use bevy::prelude::*;
 use bevy_simple_subsecond_system::*;
 
 use crate::{
