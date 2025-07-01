@@ -33,7 +33,7 @@ pub fn setup(
             },
             ..OrthographicProjection::default_3d()
         }),
-        Transform::from_xyz(0., 1., 0.).looking_at(Vec3::ZERO, Dir3::Z),
+        Transform::from_xyz(0., 1., 0.).looking_at(Vec3::ZERO, Dir3::Y),
         Reloadable::default(),
     ));
 

@@ -105,19 +105,24 @@ pub fn display_arcs(
         gizmos
             .arc_3d(
                 theta,
-                (arc.end - arc.center).length(),
+                (arc.start - arc.center).length(),
                 Isometry3d::new(
                     arc.center + Dir3::Y * 0.,
-                    Quat::from_rotation_arc(Vec3::Z, Dir3::X.as_vec3().normalize()),
+                    Quat::from_rotation_arc(Vec3::Z, Dir3::X.as_vec3()),
                 ),
                 Color::WHITE,
             )
-            .resolution(DEFAULT_RESOLUTION);
+            .resolution(16);
     }
     // Display currently drawn circle
-    if state.get() == &DrawMode::Arc && current_drawing.position[0] != DEFAULT_POS {
-        let center = current_drawing.position[0];
-        let start = current_drawing.position[1];
+    if state.get() != &DrawMode::Arc {
+        return;
+    }
+
+    let center = current_drawing.position[0];
+    let start = current_drawing.position[1];
+
+    if center != DEFAULT_POS {
         let radius = if start != DEFAULT_POS {
             (start - center).length()
         } else {
@@ -133,5 +138,16 @@ pub fn display_arcs(
                 Color::WHITE,
             )
             .resolution(DEFAULT_RESOLUTION);
+    }
+    if center != DEFAULT_POS {
+        let to = if start != DEFAULT_POS {
+            start
+        } else {
+            cursor.position
+        };
+        gizmos.line(center, to, Color::WHITE);
+    }
+    if start != DEFAULT_POS {
+        gizmos.line(center, cursor.position, Color::WHITE);
     }
 }
