@@ -1,5 +1,6 @@
 use bevy::{
     // math::ops::{abs, acos},
+    math::ops::atan,
     prelude::*,
 };
 use bevy_simple_subsecond_system::*;
@@ -98,21 +99,7 @@ pub fn display_arcs(
 ) {
     // Display existing circles
     for arc in query.iter() {
-        // let a = (arc.end - arc.center).length();
-        // let b = (arc.end - arc.start).length();
-        // let c = (arc.start - arc.center).length();
-        let theta = 180.0_f32.to_radians(); // acos(a.powf(2.0) + b.powf(2.0) - c.powf(2.0)) / 2.0 * a * b;
-        gizmos
-            .arc_3d(
-                theta,
-                (arc.start - arc.center).length(),
-                Isometry3d::new(
-                    arc.center + Dir3::Y * 0.,
-                    Quat::from_rotation_arc(Vec3::Z, Dir3::X.as_vec3()),
-                ),
-                Color::WHITE,
-            )
-            .resolution(16);
+        gizmos.short_arc_3d_between(arc.center, arc.start, arc.end, Color::WHITE);
     }
     // Display currently drawn circle
     if state.get() != &DrawMode::Arc {
