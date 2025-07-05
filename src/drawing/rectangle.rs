@@ -12,6 +12,12 @@ use super::{
     line::Line,
 };
 
+#[derive(Component, Debug)]
+pub struct Rectangle {
+    pub start: Vec3,
+    pub end: Vec3,
+}
+
 pub struct RectanglePlugin;
 
 impl Plugin for RectanglePlugin {
@@ -58,6 +64,15 @@ pub fn handle_draw_rectangle(
         let mut start_index = 0;
         let mut end_index = positions.len() - 1;
 
+        commands.spawn((
+            Rectangle {
+                start: start,
+                end: end,
+            },
+            Reloadable {
+                level: ReloadLevel::Hard,
+            },
+        ));
         for position in positions {
             commands.spawn((
                 Dot { position: position },

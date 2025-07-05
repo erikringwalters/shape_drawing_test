@@ -1,11 +1,13 @@
 mod cursor;
 mod drawing;
+mod mesh;
 mod reload;
 
 use bevy::{prelude::*, render::camera::ScalingMode};
 use bevy_simple_subsecond_system::*;
 use cursor::CursorPlugin;
 use drawing::draw::DrawPlugin;
+use mesh::mesh::MeshPlugin;
 use reload::{ReloadPlugin, Reloadable};
 
 fn main() {
@@ -14,6 +16,7 @@ fn main() {
         .add_plugins(SimpleSubsecondPlugin::default())
         .add_plugins(CursorPlugin)
         .add_plugins(DrawPlugin)
+        .add_plugins(MeshPlugin)
         .add_plugins(ReloadPlugin)
         .add_systems(Startup, setup)
         .run();
