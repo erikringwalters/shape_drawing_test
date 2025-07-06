@@ -56,9 +56,10 @@ fn create_mesh_from_rectangles(query: Query<&Rectangle>) -> Vec<Mesh> {
         for position in positions {
             vertices.push(position);
         }
-        for i in 1..positions.len() as u32 {
+        for i in 2..positions.len() as u32 {
             indices.extend_from_slice(&[i - 1, i, 0]);
         }
+        println!("{:?}", indices);
         meshes.push(
             Mesh::new(
                 bevy::render::mesh::PrimitiveTopology::TriangleList,
