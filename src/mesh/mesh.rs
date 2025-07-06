@@ -38,6 +38,8 @@ pub fn handle_create_mesh(
 #[hot]
 fn create_mesh_from_rectangles(query: Query<&Rectangle>) -> Vec<Mesh> {
     let mut meshes: Vec<Mesh> = Vec::new();
+    let mut indices = Vec::new();
+
     for rect in query.iter() {
         let start = rect.start;
         let end = rect.end;
@@ -49,17 +51,20 @@ fn create_mesh_from_rectangles(query: Query<&Rectangle>) -> Vec<Mesh> {
             vec3(start.x, 0., end.z),
         ];
         let mut vertices: Vec<Vec3> = Vec::new();
-        let normals = vec![[0f32, 0f32, 1f32]; 5];
+        let normals = vec![[0f32, 0f32, 1f32]; 4];
 
         for position in positions {
             vertices.push(position);
+        }
+        for i in 1..positions.len() as u32 {
+            indices.extend_from_slice(&[i - 1, i, 0]);
         }
         meshes.push(
             Mesh::new(
                 bevy::render::mesh::PrimitiveTopology::TriangleList,
                 RenderAssetUsages::default(),
             )
-            // .with_inserted_indices(bevy::render::mesh::Indices::U32(indices))
+            .with_inserted_indices(bevy::render::mesh::Indices::U32(indices.clone()))
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
             .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals),
         );
