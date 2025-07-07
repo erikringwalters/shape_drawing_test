@@ -69,6 +69,7 @@ fn create_mesh_from_rectangles(query: Query<&Rectangle>) -> Vec<Mesh> {
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, vertices)
             .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals),
         );
+        indices.clear()
     }
     return meshes;
 }

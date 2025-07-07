@@ -6,6 +6,8 @@ use crate::{
     reload::{ReloadLevel, Reloadable},
 };
 
+use super::size::DOT_RADIUS;
+
 #[derive(Component, Debug, Default)]
 pub struct Dot {
     pub position: Vec3,
@@ -46,7 +48,7 @@ pub fn display_dots(mut gizmos: Gizmos, query: Query<&Dot>) {
                 dot.position + Dir3::Y * 0.,
                 Quat::from_rotation_arc(Vec3::Z, Dir3::Y.as_vec3()),
             ),
-            0.05,
+            DOT_RADIUS,
             Color::WHITE,
         );
     }
