@@ -47,8 +47,7 @@ pub fn handle_draw_line(
     }
     // Define end of line
     else if current_drawing.position[1] == DEFAULT_POS {
-        current_drawing.position[1] = cursor.position;
-        // TODO: Snap line end to nearby dot
+        current_drawing.position[1] = cursor.position
     }
 
     let start = current_drawing.position[0];
